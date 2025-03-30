@@ -1,0 +1,218 @@
+package app.unit;
+
+import app.gui.GamePanel;
+import app.gui.JoyStick;
+
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+
+public class Player extends Unit{
+    public boolean inAir;
+    public boolean isStanding;
+    public int screenX;
+    public int screenY;
+    public int jumpRate;
+    public int groundLevel;
+    public float jumpPower = 25f;
+    public float gravity = 0.6f;
+    public float jumpVelocity = 0f;
+    public int playerWidth;
+    public int playerHeight;
+    public boolean isJumping = false;
+
+    private String direction;
+    private BufferedImage leftImage;
+    private BufferedImage rightImage;
+
+    GamePanel gamePanel;
+    JoyStick joyStick;
+
+    public Player(GamePanel gamePanel, JoyStick joyStick) {
+        this.gamePanel = gamePanel;
+        this.groundLevel = (this.gamePanel.map.mapHeight - 4) * this.gamePanel.TILE_SIZE;
+        this.speedRate = 7;
+        this.joyStick = joyStick;
+        this.initImages();
+        this.initDefaults();
+        this.initUnitArea();
+    }
+
+    private void initDefaults(){
+        worldX = Math.max(0, gamePanel.TILE_SIZE * 10);
+        worldY = Math.max(0, (gamePanel.map.mapHeight - 4) * gamePanel.map.fieldSize);
+        screenX = gamePanel.SCREEN_WIDTH / 2 - gamePanel.TILE_SIZE / 2;
+        screenY = gamePanel.SCREEN_HEIGHT - gamePanel.TILE_SIZE * 4;
+        jumpRate = 25;
+        direction = "left";
+        playerWidth = gamePanel.TILE_SIZE;
+        playerHeight = gamePanel.TILE_SIZE * 2;
+        inAir = false;
+        isStanding = true;
+    }
+
+    private void initUnitArea(){
+        unitArea = new Rectangle(worldX, worldY, playerWidth, playerHeight);
+    }
+
+    private void initImages(){
+        try{
+            leftImage = ImageIO.read(new File("resources/units/player/beethovenLeft.png"));
+            rightImage = ImageIO.read(new File("resources/units/player/beethovenRight.png"));
+        } catch (IOException exception){
+            exception.printStackTrace();
+        }
+    }
+
+    public String detectCollisionWithMap() {
+        if (worldX < 0 || worldY < 0 || 
+            worldX / gamePanel.TILE_SIZE >= gamePanel.map.mapWidth || 
+            worldY / gamePanel.TILE_SIZE >= gamePanel.map.mapHeight) {
+            return "none";
+        }
+
+        Rectangle playerHitbox = new Rectangle(worldX, worldY, playerWidth, playerHeight);
+
+        try {
+            // Sprawdź dolną krawędź gracza
+            Rectangle bottomLeftTile = gamePanel.map.fields[gamePanel.map.map[worldX / gamePanel.TILE_SIZE][(worldY + playerHeight) / gamePanel.TILE_SIZE]].hitbox;
+            Rectangle bottomRightTile = gamePanel.map.fields[gamePanel.map.map[(worldX + playerWidth) / gamePanel.TILE_SIZE][(worldY + playerHeight) / gamePanel.TILE_SIZE]].hitbox;
+
+            if (playerHitbox.intersects(bottomLeftTile) || playerHitbox.intersects(bottomRightTile)) {
+                return "bottom";
+            }
+
+            // Sprawdź górną krawędź gracza
+            Rectangle topLeftTile = gamePanel.map.fields[gamePanel.map.map[worldX / gamePanel.TILE_SIZE][worldY / gamePanel.TILE_SIZE]].hitbox;
+            Rectangle topRightTile = gamePanel.map.fields[gamePanel.map.map[(worldX + playerWidth) / gamePanel.TILE_SIZE][worldY / gamePanel.TILE_SIZE]].hitbox;
+
+            if (playerHitbox.intersects(topLeftTile) || playerHitbox.intersects(topRightTile)) {
+                return "top";
+            }
+
+            // Sprawdź lewą krawędź gracza
+            Rectangle leftTile = gamePanel.map.fields[gamePanel.map.map[worldX / gamePanel.TILE_SIZE][worldY / gamePanel.TILE_SIZE]].hitbox;
+
+            if (playerHitbox.intersects(leftTile)) {
+                return "left";
+            }
+
+            // Sprawdź prawą krawędź gracza
+            Rectangle rightTile = gamePanel.map.fields[gamePanel.map.map[(worldX + playerWidth) / gamePanel.TILE_SIZE][worldY / gamePanel.TILE_SIZE]].hitbox;
+
+            if (playerHitbox.intersects(rightTile)) {
+                return "right";
+            }
+        } catch (ArrayIndexOutOfBoundsException e) {
+            System.err.println("Gracz poza mapą.");
+            return "none";
+        }
+
+        return "none";
+    }
+
+    public void update() {
+        int previousWorldX = worldX;
+        int previousWorldY = worldY;
+
+        // Ograniczenie pozycji gracza do mapy
+        worldX = Math.max(0, Math.min(worldX, gamePanel.map.mapWidth * gamePanel.TILE_SIZE - playerWidth));
+        worldY = Math.max(0, Math.min(worldY, gamePanel.map.mapHeight * gamePanel.TILE_SIZE - playerHeight));
+
+        // Ruch boczny
+        if (joyStick.keyDPressed) {
+            setDirection("right");
+            worldX += speedRate;
+            if (detectCollisionWithMap().equals("right")) {
+                worldX = previousWorldX;
+            }
+        } else if (joyStick.keyAPressed) {
+            setDirection("left");
+            worldX -= speedRate;
+            if (detectCollisionWithMap().equals("left")) {
+                worldX = previousWorldX;
+            }
+        }
+
+        // Rozpoczęcie skoku
+        if (joyStick.keyWPressed && !inAir && isStanding) {
+            isJumping = true;
+            inAir = true;
+            isStanding = false;
+            setDirection("up");
+            jumpVelocity = -jumpPower;
+        }
+
+        // Skok i grawitacja
+        if (inAir) {
+            jumpVelocity += gravity;
+            worldY += (int) jumpVelocity;
+
+            if (detectCollisionWithMap().equals("top")) {
+                jumpVelocity = 0;
+                inAir = true;
+                isStanding = false;
+                isJumping = false;
+            }
+
+            if (detectCollisionWithMap().equals("bottom")) {
+                int bloczekY = (worldY / gamePanel.TILE_SIZE) * gamePanel.TILE_SIZE;
+                worldY = bloczekY - playerHeight;
+                jumpVelocity = 0;
+                inAir = false;
+                isStanding = true;
+                isJumping = false;
+            }
+        }
+
+        if (!isStanding) {
+            jumpVelocity += gravity;
+            worldY += (int) jumpVelocity;
+
+            if (detectCollisionWithMap().equals("bottom")) {
+                int bloczekY = (worldY / gamePanel.TILE_SIZE) * gamePanel.TILE_SIZE;
+                worldY = bloczekY - playerHeight;
+                jumpVelocity = 0;
+                inAir = false;
+                isStanding = true;
+                isJumping = false;
+            }
+        }
+
+        updateUnitArea();
+    }
+
+    public void updateUnitArea() {
+        unitArea.x = worldX - gamePanel.cameraX;
+        unitArea.y = worldY - gamePanel.cameraY;
+        unitArea.width = playerWidth;
+        unitArea.height = playerHeight;
+    }
+
+    public void setDirection(String direction){
+        this.direction = direction;
+    }
+
+    String getDirection(){
+        return direction;
+    }
+
+    public void draw(Graphics2D g){
+        int renderX = gamePanel.SCREEN_WIDTH / 2 - playerWidth / 2;
+        int renderY = gamePanel.PLAYER_SCREEN_Y - playerHeight;
+
+        switch(direction){
+            case "left":
+                g.drawImage(leftImage, unitArea.x, unitArea.y, playerWidth,playerHeight,null);
+                break;
+            case "right":
+                g.drawImage(rightImage, unitArea.x, unitArea.y, playerWidth,playerHeight,null);
+                break;
+            default:
+                g.drawImage(leftImage, unitArea.x, unitArea.y, playerWidth,playerHeight,null);
+                break;
+        }
+    }
+}
