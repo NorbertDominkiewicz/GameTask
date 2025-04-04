@@ -8,8 +8,7 @@ import java.util.Random;
 
 
 public class Map {
-    public int[][] map;
-    public Field[] fields;
+    public Field[][] map;
     public int mapWidth;
     public int mapHeight;
     public int fieldSize;
@@ -21,18 +20,26 @@ public class Map {
         this.mapHeight = mapHeight;
         this.fieldSize = fieldSize;
 
-        map = new int[mapWidth][mapHeight];
+        map = new Field[mapWidth][mapHeight];
 
-        initFieldValues();
         generateMap();
         loadMap();
     }
 
-    private void initFieldValues() {
-        fields = new Field[2];
-        fields[0] = new Field("transparentBlock.png", fieldSize);
-        fields[1] = new Field("stepBlock.png", fieldSize);
-        fields[1].setCollision(true);
+    private String generateFullPattern(){
+        StringBuilder pattern = new StringBuilder();
+        int length = mapWidth*2;
+        for(int i = 0; i < length; i++){
+            if(i==length-1){
+                break;
+            }
+            if(i%2!=0){
+                pattern.append(" ");
+            } else {
+                pattern.append(1);
+            }
+        }
+        return pattern.toString();
     }
 
     private String generateEmptyPattern(){
@@ -51,30 +58,58 @@ public class Map {
         return pattern.toString();
     }
     private String generatePattern(){
+        int counter = 0;
         Random rand = new Random();
         StringBuilder pattern = new StringBuilder();
-        int length = mapWidth*2;
-        for(int i = 0; i < length; i++){
-            if(i==length-1){
+        int length = mapWidth * 2;
+
+        for (int i = 0; i < length; i++) {
+            if (i == length - 1) {
                 break;
             }
-            if(i%2!=0){
+
+            if (i % 2 != 0) {
                 pattern.append(" ");
             } else {
-                pattern.append(rand.nextInt(2));
+                int j;
+                if (counter >= 8) {
+                    j = 0;
+                } else {
+                    j = rand.nextInt(2);
+                }
+                if (j == 1) {
+                    int jedynki = rand.nextInt(2) + 2;
+                    pattern.append(1);
+                    counter++;
+                    for (int k = 1; k < jedynki; k++) {
+                        if (i + 2 < length) {
+                            pattern.append(" ");
+                            pattern.append(1);
+                            counter++;
+                        }
+                    }
+                    i += (jedynki - 1) * 2;
+                } else {
+                    pattern.append(0);
+                }
             }
         }
         return pattern.toString();
     }
+
     private void generateMap() {
-        map = new int[mapWidth][mapHeight];
+        map = new Field[mapWidth][mapHeight];
         try {
-            FileWriter fw = new FileWriter("resources/maps/map.beethspace");
+            FileWriter fw = new FileWriter("map.beethspace");
             for (int i = 0; i < mapHeight; i++) {
-                if (i % 4 == 0) {
+                if (i == mapHeight - 1) {
+                    fw.write(generateFullPattern());
+                    break;
+                }
+                if (i % 5 == 0) {
                     fw.write(generatePattern());
                 }
-                if (i % 4 != 0) {
+                if (i % 5 != 0) {
                     fw.write(generateEmptyPattern());
                 }
                 fw.write("\n");
@@ -85,13 +120,17 @@ public class Map {
         }
     }
     private void loadMap() {
-        try (BufferedReader br = new BufferedReader(new FileReader("resources/maps/map.beethspace"))) {
+        try (BufferedReader br = new BufferedReader(new FileReader("map.beethspace"))) {
             String line;
             int y = 0;
             while ((line = br.readLine()) != null && y < mapHeight) {
                 String[] tokens = line.split(" ");
                 for (int x = 0; x < tokens.length && x < mapWidth; x++) {
-                    map[x][y] = Integer.parseInt(tokens[x]);
+                    if(Integer.parseInt(tokens[x]) == 1){
+                        map[x][y] = new Field("blackStone.jpg", x, y, fieldSize, true);
+                    } else if (Integer.parseInt(tokens[x]) == 0){
+                        map[x][y] = new Field("transparentBlock.png", x ,y, fieldSize, false);
+                    }
                 }
                 y++;
             }
@@ -99,7 +138,7 @@ public class Map {
             System.err.println("Błąd wczytywania mapy: " + e.getMessage());
             for (int y = 0; y < mapHeight; y++) {
                 for (int x = 0; x < mapWidth; x++) {
-                    map[x][y] = 0;
+                    map[x][y] = new Field("transparentBlock.png", x ,y, fieldSize, false);
                 }
             }
         }
@@ -115,14 +154,7 @@ public class Map {
 
         for (int y = startY; y < endY; y++) {
             for (int x = startX; x < endX; x++) {
-                g2d.drawImage(
-                        fields[map[x][y]].getFieldImage(),
-                        x * fieldSize - gamePanel.cameraX, // Przesunięcie X
-                        y * fieldSize - gamePanel.cameraY, // NOWE: przesunięcie Y
-                        fieldSize,
-                        fieldSize,
-                        null
-                );
+                g2d.drawImage(map[x][y].getFieldImage(), map[x][y].hitbox.x * fieldSize - gamePanel.cameraX, map[x][y].hitbox.y * fieldSize - gamePanel.cameraY, fieldSize, fieldSize, null);
             }
         }
     }

@@ -2,6 +2,7 @@ package app.unit;
 
 import app.gui.GamePanel;
 import app.gui.JoyStick;
+import app.gui.Victory;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -16,12 +17,13 @@ public class Player extends Unit{
     public int screenY;
     public int jumpRate;
     public int groundLevel;
-    public float jumpPower = 25f;
-    public float gravity = 0.6f;
+    public float jumpPower = 35f;
+    public float gravity = 0.8f;
     public float jumpVelocity = 0f;
     public int playerWidth;
     public int playerHeight;
     public boolean isJumping = false;
+    public boolean unKillable = true;
 
     private String direction;
     private BufferedImage leftImage;
@@ -33,35 +35,47 @@ public class Player extends Unit{
     public Player(GamePanel gamePanel, JoyStick joyStick) {
         this.gamePanel = gamePanel;
         groundLevel = (this.gamePanel.map.mapHeight - 4) * this.gamePanel.TILE_SIZE;
-        speedRate = 7;
+        speedRate = 17;
         this.joyStick = joyStick;
         this.initImages();
         this.initDefaults();
         this.initUnitArea();
+        this.setKillable();
+    }
+
+    private void setKillable(){
+        new Thread(() -> {
+            try{
+                Thread.sleep(3000);
+                this.unKillable = false;
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
 
     private void initDefaults(){
         worldX = gamePanel.TILE_SIZE * 10;
-        groundLevel = (gamePanel.map.mapHeight - 4) * gamePanel.map.fieldSize;
+        groundLevel = (gamePanel.map.mapHeight - 3) * gamePanel.map.fieldSize;
         worldY = groundLevel;
         screenX = gamePanel.SCREEN_WIDTH / 2 - gamePanel.TILE_SIZE / 2;
         screenY = gamePanel.SCREEN_HEIGHT - gamePanel.TILE_SIZE * 4;
         jumpRate = 25;
         direction = "left";
         playerWidth = gamePanel.TILE_SIZE;
-        playerHeight = gamePanel.TILE_SIZE * 2;
+        playerHeight = gamePanel.TILE_SIZE *2;
         inAir = false;
         isStanding = true;
     }
 
     private void initUnitArea(){
-        unitArea = new Rectangle(worldX, worldY, playerWidth, playerHeight);
+        unitArea = new Rectangle(worldX, worldY, playerWidth/2, playerHeight*2);
     }
 
     private void initImages(){
         try{
-            leftImage = ImageIO.read(new File("resources/units/player/beethovenLeft.png"));
-            rightImage = ImageIO.read(new File("resources/units/player/beethovenRight.png"));
+            leftImage = ImageIO.read(getClass().getResource("/units/player/beethovenLeft.png"));
+            rightImage = ImageIO.read(getClass().getResource("/units/player/beethovenRight.png"));
         } catch (IOException exception){
             exception.printStackTrace();
         }
@@ -78,42 +92,64 @@ public class Player extends Unit{
         int topTile = topWorldY / gamePanel.TILE_SIZE;
         int bottomTile = bottomWorldY / gamePanel.TILE_SIZE;
 
-        if (gamePanel.map.fields[gamePanel.map.map[leftTile][bottomTile]].isCollision()
-                || gamePanel.map.fields[gamePanel.map.map[rightTile][bottomTile]].isCollision()) {
-            return "bottom"; // Kolizja od dołu
-        } else if (gamePanel.map.fields[gamePanel.map.map[leftTile][topTile]].isCollision()
-                || gamePanel.map.fields[gamePanel.map.map[rightTile][topTile]].isCollision()) {
-            return "top"; // Kolizja od góry
-        } else if (gamePanel.map.fields[gamePanel.map.map[leftTile][topTile]].isCollision()
-                || gamePanel.map.fields[gamePanel.map.map[leftTile][bottomTile]].isCollision()) {
-            return "left"; // Kolizja z lewej strony
-        } else if (gamePanel.map.fields[gamePanel.map.map[rightTile][topTile]].isCollision()
-                || gamePanel.map.fields[gamePanel.map.map[rightTile][bottomTile]].isCollision()) {
-            return "right"; // Kolizja z prawej strony
+        if (gamePanel.map.map[leftTile][bottomTile].isCollision() || gamePanel.map.map[rightTile][bottomTile].isCollision()) {
+            System.out.println("bottom kolizja");
+            return "bottom";
+        } else if (gamePanel.map.map[leftTile][topTile].isCollision() || gamePanel.map.map[rightTile][topTile].isCollision()) {
+            System.out.println("top kolizja");
+            return "top";
+        } else if (gamePanel.map.map[leftTile][topTile].isCollision() || gamePanel.map.map[leftTile][bottomTile].isCollision()) {
+            System.out.println("left kolizja");
+            return "left";
+        } else if (gamePanel.map.map[rightTile][topTile].isCollision() || gamePanel.map.map[rightTile][bottomTile].isCollision()) {
+            System.out.println("right kolizja");
+            return "right";
         }
-        return "none"; // Brak kolizji
+        return "none";
     }
 
     public void update() {
         int previousWorldX = worldX;
         int previousWorldY = worldY;
+        int oldSpeedRate = speedRate;
 
-        // Ruch boczny
         if (joyStick.keyDPressed) {
             setDirection("right");
-            worldX += speedRate;
+            if (worldX + playerWidth < gamePanel.MAX_WORLD_COLUMNS * gamePanel.TILE_SIZE) {
+                worldX += speedRate;
+            }
+            if (detectCollisionWithMap().equals("bottom")) {
+                worldY = previousWorldY;
+                jumpVelocity = 0;
+                inAir = false;
+                isStanding = true;
+            } else {
+                inAir = true;
+                jumpVelocity += gravity;
+                worldY += (int) jumpVelocity;
+            }
             if (detectCollisionWithMap().equals("right")) {
                 worldX = previousWorldX;
             }
         } else if (joyStick.keyAPressed) {
             setDirection("left");
-            worldX -= speedRate;
+            if(worldX > 0){
+                worldX -= speedRate;
+            }
             if (detectCollisionWithMap().equals("left")) {
                 worldX = previousWorldX;
             }
+            if (detectCollisionWithMap().equals("bottom")) {
+                worldY = previousWorldY;
+                jumpVelocity = 0;
+                inAir = false;
+                isStanding = true;
+            } else {
+                inAir = true;
+                jumpVelocity += gravity;
+                worldY += (int) jumpVelocity;
+            }
         }
-
-        // Rozpoczęcie skoku
         if (joyStick.keyWPressed && !inAir && isStanding) {
             isJumping = true;
             inAir = true;
@@ -122,49 +158,46 @@ public class Player extends Unit{
             jumpVelocity = -jumpPower;
         }
 
-        // Skok i grawitacja
         if (inAir) {
             jumpVelocity += gravity;
             worldY += (int) jumpVelocity;
-
             if (detectCollisionWithMap().equals("top")) {
-                // Zatrzymujemy ruch w górę
-                jumpVelocity = 0; // Natychmiast zatrzymujemy skok
-                inAir = true;     // Gracz pozostaje w powietrzu, zaczyna opadać
-                isStanding = false; // Nie stoi na żadnym bloczku
-                isJumping = false; // Skok zakończony
+                jumpVelocity = 0;
+                inAir = true;
+                isStanding = false;
+                worldY = previousWorldY;
+                isJumping = false;
             }
-
-            // Kolizja od dołu (lądowanie)
             if (detectCollisionWithMap().equals("bottom")) {
-                // Precyzyjne ustawienie na bloczku
-                int bloczekY = (worldY / gamePanel.TILE_SIZE) * gamePanel.TILE_SIZE; // Wyliczenie dolnej krawędzi bloczka
-                worldY = bloczekY - playerHeight; // Ustawienie gracza na bloczku
-
-                // Synchronizacja stanu gracza
-                jumpVelocity = 0;  // Zresetuj prędkość pionową
-                inAir = false;     // Gracz nie jest w powietrzu
-                isStanding = true; // Gracz stoi na bloczku
+                worldY = previousWorldY - 10;
+                jumpVelocity = 0;
+                inAir = false;
+                isStanding = true;
             } else {
-                // Jeśli brak kolizji, kontynuuj grawitację
+
                 inAir = true;
                 jumpVelocity += gravity;
                 worldY += (int) jumpVelocity;
             }
         }
-
-        // Grawitacja, gdy gracz nie stoi
         if (!isStanding) {
             jumpVelocity += gravity;
             worldY += (int) jumpVelocity;
         }
-
         updateUnitArea();
+        System.out.println("World: " + worldX + ", " + worldY);
     }
 
+    public boolean checkCollisionWithPiano(Piano piano) {
+        if(unKillable){
+            return false;
+        } else {
+            return unitArea.intersects(piano.getCollisionArea());
+        }
+    }
 
     public void updateUnitArea() {
-        unitArea.x = worldX - gamePanel.cameraX; // Używamy worldX z przesunięciem kamery
+        unitArea.x = worldX - gamePanel.cameraX;
         unitArea.y = worldY - gamePanel.cameraY;
         unitArea.width = playerWidth;
         unitArea.height = playerHeight;
@@ -174,23 +207,17 @@ public class Player extends Unit{
         this.direction = direction;
     }
 
-    String getDirection(){
-        return direction;
-    }
-
     public void draw(Graphics2D g){
-        int renderX = gamePanel.SCREEN_WIDTH / 2 - playerWidth / 2;
-        int renderY = gamePanel.PLAYER_SCREEN_Y - playerHeight;
 
         switch(direction){
             case "left":
-                g.drawImage(leftImage, unitArea.x, unitArea.y, playerWidth,playerHeight,null);
+                g.drawImage(leftImage, unitArea.x, unitArea.y, unitArea.width,unitArea.height,null);
                 break;
             case "right":
-                g.drawImage(rightImage, unitArea.x, unitArea.y, playerWidth,playerHeight,null);
+                g.drawImage(rightImage, unitArea.x, unitArea.y, unitArea.width,unitArea.height,null);
                 break;
             default:
-                g.drawImage(leftImage, unitArea.x, unitArea.y, playerWidth,playerHeight,null);
+                g.drawImage(leftImage, unitArea.x, unitArea.y, unitArea.width,unitArea.height,null);
                 break;
         }
     }

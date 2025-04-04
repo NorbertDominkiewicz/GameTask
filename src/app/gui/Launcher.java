@@ -3,6 +3,7 @@ package app.gui;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.File;
 
 public class Launcher extends JFrame {
     GamePanel gamePanel;
@@ -25,10 +26,9 @@ public class Launcher extends JFrame {
         getContentPane().setCursor(blankCursor);
 
         // init gamePanel and we use pack() so all screen dimensions will rely on gamePanel's dims
-        gamePanel = new GamePanel(screenWidth, screenHeight);
+        gamePanel = new GamePanel(screenWidth, screenHeight,gd);
         add(gamePanel);
         pack();
-
         setVisible(true);
         gamePanel.requestFocusInWindow();
     }
