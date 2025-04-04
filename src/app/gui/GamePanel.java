@@ -179,9 +179,6 @@ public class GamePanel extends JPanel implements Runnable {
         g2d.drawImage(BACKGROUND, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, null);
         map.draw(g2d);
 
-        g2d.setColor(Color.BLUE);
-        g2d.drawRect(player.unitArea.x, player.unitArea.y, player.unitArea.width, player.unitArea.height);
-
         player.draw(g2d);
         for (Piano piano : pianos) {
             piano.draw(g2d);
