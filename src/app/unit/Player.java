@@ -24,6 +24,7 @@ public class Player extends Unit{
     public int playerHeight;
     public boolean isJumping = false;
     public boolean unKillable = true;
+    public int playerScore = 0;
 
     private String direction;
     private BufferedImage leftImage;
@@ -32,8 +33,11 @@ public class Player extends Unit{
     GamePanel gamePanel;
     JoyStick joyStick;
 
-    public Player(GamePanel gamePanel, JoyStick joyStick) {
+    String folder;
+
+    public Player(GamePanel gamePanel, JoyStick joyStick, String folder) {
         this.gamePanel = gamePanel;
+        this.folder = folder;
         groundLevel = (this.gamePanel.map.mapHeight - 4) * this.gamePanel.TILE_SIZE;
         speedRate = 17;
         this.joyStick = joyStick;
@@ -46,7 +50,7 @@ public class Player extends Unit{
     private void setKillable(){
         new Thread(() -> {
             try{
-                Thread.sleep(3000);
+                Thread.sleep(8000);
                 this.unKillable = false;
             } catch (InterruptedException e) {
                 e.printStackTrace();
@@ -74,8 +78,8 @@ public class Player extends Unit{
 
     private void initImages(){
         try{
-            leftImage = ImageIO.read(getClass().getResource("/units/player/beethovenLeft.png"));
-            rightImage = ImageIO.read(getClass().getResource("/units/player/beethovenRight.png"));
+            leftImage = ImageIO.read(getClass().getResource("/units/" + folder + "/left.png"));
+            rightImage = ImageIO.read(getClass().getResource("/units/" + folder + "/right.png"));
         } catch (IOException exception){
             exception.printStackTrace();
         }
@@ -111,7 +115,6 @@ public class Player extends Unit{
     public void update() {
         int previousWorldX = worldX;
         int previousWorldY = worldY;
-        int oldSpeedRate = speedRate;
 
         if (joyStick.keyDPressed) {
             setDirection("right");
@@ -186,6 +189,7 @@ public class Player extends Unit{
         }
         updateUnitArea();
         System.out.println("World: " + worldX + ", " + worldY);
+        updateScore();
     }
 
     public boolean checkCollisionWithPiano(Piano piano) {
@@ -202,6 +206,12 @@ public class Player extends Unit{
         unitArea.width = playerWidth;
         unitArea.height = playerHeight;
     }
+
+    public void updateScore() {
+        int score = (int) Math.sqrt((gamePanel.maxScore * gamePanel.TILE_SIZE - worldY));
+        playerScore = score;
+    }
+
 
     public void setDirection(String direction){
         this.direction = direction;

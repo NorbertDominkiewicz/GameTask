@@ -1,5 +1,6 @@
 package app;
 
+import app.gui.Game;
 import app.gui.Launcher;
 
 public class App {

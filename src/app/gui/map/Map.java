@@ -19,7 +19,7 @@ public class Map {
         this.mapWidth = mapWidth;
         this.mapHeight = mapHeight;
         this.fieldSize = fieldSize;
-
+        System.out.println("Map height: " + mapHeight);
         map = new Field[mapWidth][mapHeight];
 
         generateMap();
@@ -144,7 +144,6 @@ public class Map {
         }
     }
     public void update() {
-
     }
     public void draw(Graphics2D g2d) {
         int startX = gamePanel.cameraX / fieldSize;

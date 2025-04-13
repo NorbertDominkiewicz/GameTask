@@ -14,7 +14,6 @@ import java.util.ArrayList;
 import java.util.Random;
 
 public class GamePanel extends JPanel implements Runnable {
-    // primitives
     public int SCREEN_WIDTH;
     public int SCREEN_HEIGHT;
     public int TILE_SIZE;
@@ -39,26 +38,28 @@ public class GamePanel extends JPanel implements Runnable {
     private Random rand = new Random();
     private ArrayList<Piano> pianos;
     private GraphicsDevice gd;
+    public int maxScore;
     //public PianoGenerator pianoGenerator;
-
-    public GamePanel(int screenWidth, int screenHeight, GraphicsDevice gd) {
+    //
+    public GamePanel(int screenWidth, int screenHeight, GraphicsDevice gd, String folder, int maxScore) {
         SCREEN_WIDTH = screenWidth;
         SCREEN_HEIGHT = screenHeight;
         MAX_SCREEN_COLUMNS = 16;
         MAX_SCREEN_ROWS = 9;
         MAX_WORLD_COLUMNS = 16;
-        MAX_WORLD_ROWS = 40;
+        MAX_WORLD_ROWS = maxScore;
+        System.out.println("MAX_WORLD_COLUMNS: " + MAX_WORLD_COLUMNS + " MAX_WORLD_ROWS: " + MAX_WORLD_ROWS);
         FPS = 60;
         PLAYER_SCREEN_Y = SCREEN_HEIGHT * 3 / 4;
         TILE_SIZE = screenWidth / MAX_SCREEN_COLUMNS;
         this.initBackground();
+        this.maxScore = maxScore;
         this.joyStick = new JoyStick();
         this.map = new Map(MAX_WORLD_COLUMNS, MAX_WORLD_ROWS, TILE_SIZE,this);
-        this.player = new Player(this, joyStick);
+        this.player = new Player(this, joyStick,folder);
         //this.pianoGenerator = new PianoGenerator(this);
         this.pianos = new ArrayList<>();
         this.gd = gd;
-
         setPreferredSize(new Dimension(SCREEN_WIDTH, SCREEN_HEIGHT));
         setBackground(Color.BLACK);
         addKeyListener(joyStick);
@@ -126,7 +127,7 @@ public class GamePanel extends JPanel implements Runnable {
     }
 
     private void update(double delta) {
-        if(player.worldY <= TILE_SIZE/2){
+        if((player.worldY <= TILE_SIZE/2) || (player.playerScore >= maxScore) ) {
             gameWon = true;
             stopGameThread();
             new Victory(SCREEN_WIDTH/4,SCREEN_HEIGHT/4);
@@ -164,6 +165,9 @@ public class GamePanel extends JPanel implements Runnable {
                 break;
             }
         }
+        if(player.playerScore >= player.playerScore - (3 * TILE_SIZE) && player.playerScore > 150) {
+            map.update();
+        }
         updateCamera();
     }
 
@@ -183,5 +187,9 @@ public class GamePanel extends JPanel implements Runnable {
         for (Piano piano : pianos) {
             piano.draw(g2d);
         }
+
+        g2d.setColor(Color.WHITE);
+        g2d.setFont(new Font("Arial", Font.BOLD, 40));
+        g2d.drawString("Score: " + player.playerScore, SCREEN_WIDTH - SCREEN_WIDTH/5, SCREEN_HEIGHT/5);
     }
 }
