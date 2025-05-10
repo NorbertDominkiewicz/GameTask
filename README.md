@@ -1,5 +1,5 @@
 <div align="left" style="position: relative;">
-<img src="https://github.com/NorbertDominkiewicz/GameTask/blob/main/resources/gamePanel/logo.png" align="right" width="30%" style="margin: -20px 0 0 20px;">
+<!--<img src="https://github.com/NorbertDominkiewicz/GameTask/blob/main/resources/gamePanel/logo.png" align="right" width="30%" style="margin: -20px 0 0 20px;">-->
 <h1>Falling Forte</h1>
 <p align="left">
 	<em><code>❯ REPLACE-ME</code></em>
